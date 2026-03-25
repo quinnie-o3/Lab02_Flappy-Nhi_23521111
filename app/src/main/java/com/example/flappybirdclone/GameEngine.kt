@@ -1,10 +1,11 @@
 package com.example.flappybirdclone
 
 class GameEngine {
-    val bird = Bird(100.0, 500.0)
+    var bird = Bird(100.0, 500.0)
     val pipes = mutableListOf<Pipe>()
-    var isGameOver = false
     var score = 0
+    var isGameOver = false
+    
     private val speed = 5.0
     private val pipeSpawnInterval = 100
     private var tickCount = 0
@@ -15,8 +16,11 @@ class GameEngine {
     fun update() {
         if (isGameOver || screenHeight <= 0) return
 
+        // Predictive logic: the bird looks at the next pipe's gap 
+        // and maintains its height accordingly.
+        bird.predictAndFlap(pipes, screenHeight)
         bird.update()
-        
+
         tickCount++
         if (tickCount >= pipeSpawnInterval) {
             pipes.add(Pipe(x = screenWidth.toDouble()))
@@ -28,7 +32,6 @@ class GameEngine {
             val pipe = iterator.next()
             pipe.update(speed)
             
-            // Check if pipe is passed
             if (!pipe.isPassed && bird.x > pipe.x + pipe.width) {
                 pipe.isPassed = true
                 score++
@@ -43,29 +46,27 @@ class GameEngine {
     }
 
     private fun checkCollision() {
-        // Ground and ceiling collision
         if (bird.y <= 0 || bird.y + bird.height >= screenHeight) {
             isGameOver = true
-        }
-
-        // Pipe collision
-        for (pipe in pipes) {
-            // Bounding box collision
-            if (bird.x + bird.width > pipe.x && bird.x < pipe.x + pipe.width) {
-                if (bird.y < pipe.topPipeHeight || bird.y + bird.height > pipe.topPipeHeight + pipe.gapHeight) {
-                    isGameOver = true
+            bird.alive = false
+        } else {
+            for (pipe in pipes) {
+                if (bird.x + bird.width > pipe.x && bird.x < pipe.x + pipe.width) {
+                    if (bird.y < pipe.topPipeHeight || bird.y + bird.height > pipe.topPipeHeight + pipe.gapHeight) {
+                        isGameOver = true
+                        bird.alive = false
+                        break
+                    }
                 }
             }
         }
     }
-    
+
     fun reset() {
-        bird.x = 100.0
-        bird.y = 500.0
-        bird.velocity = 0.0
+        bird = Bird(100.0, 500.0)
         pipes.clear()
-        isGameOver = false
         score = 0
+        isGameOver = false
         tickCount = 0
     }
 }

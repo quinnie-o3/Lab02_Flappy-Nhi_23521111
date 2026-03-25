@@ -9,6 +9,8 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.graphics.scale
+import androidx.core.graphics.toColorInt
 
 class GameView(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
 
@@ -20,21 +22,23 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
     }
     private val scorePaint = Paint().apply {
         color = Color.WHITE
-        textSize = 80f
-        textAlign = Paint.Align.CENTER
+        textSize = 60f
+        textAlign = Paint.Align.LEFT
         isFakeBoldText = true
     }
 
     init {
-        // Load and scale the bird sprite resource
-        val originalBitmap = BitmapFactory.decodeResource(resources, R.drawable.bird_sprite)
+        // Attempt to load bird sprite. Using standard resource name 'bird_sprite'
+        // Make sure to rename your png file to 'bird_sprite.png' in res/drawable
+        val resId = resources.getIdentifier("bird_sprite", "drawable", context.packageName)
+        val originalBitmap = if (resId != 0) {
+            BitmapFactory.decodeResource(resources, resId)
+        } else {
+            null
+        }
+        
         if (originalBitmap != null) {
-            birdBitmap = Bitmap.createScaledBitmap(
-                originalBitmap,
-                engine.bird.width.toInt(),
-                engine.bird.height.toInt(),
-                true
-            )
+            birdBitmap = originalBitmap.scale(100, 75, true)
         }
     }
 
@@ -47,22 +51,22 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Set background to pink
-        canvas.drawColor(Color.parseColor("#FFC0CB"))
+        // Background color
+        canvas.drawColor("#4EC0CA".toColorInt())
 
+        // Update game state
         engine.update()
 
         // Draw bird
         birdBitmap?.let {
             canvas.drawBitmap(it, engine.bird.x.toFloat(), engine.bird.y.toFloat(), null)
         } ?: run {
-            // Fallback: draw a yellow rectangle if bitmap is missing
             val paint = Paint().apply { color = Color.YELLOW }
             canvas.drawRect(
-                engine.bird.x.toFloat(),
-                engine.bird.y.toFloat(),
-                (engine.bird.x + engine.bird.width).toFloat(),
-                (engine.bird.y + engine.bird.height).toFloat(),
+                engine.bird.x.toFloat(), 
+                engine.bird.y.toFloat(), 
+                (engine.bird.x + engine.bird.width).toFloat(), 
+                (engine.bird.y + engine.bird.height).toFloat(), 
                 paint
             )
         }
@@ -71,36 +75,35 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
         for (pipe in engine.pipes) {
             // Top pipe
             canvas.drawRect(
-                pipe.x.toFloat(),
-                0f,
-                (pipe.x + pipe.width).toFloat(),
-                pipe.topPipeHeight.toFloat(),
+                pipe.x.toFloat(), 
+                0f, 
+                (pipe.x + pipe.width).toFloat(), 
+                pipe.topPipeHeight.toFloat(), 
                 pipePaint
             )
             // Bottom pipe
             canvas.drawRect(
-                pipe.x.toFloat(),
-                (pipe.topPipeHeight + pipe.gapHeight).toFloat(),
-                (pipe.x + pipe.width).toFloat(),
-                height.toFloat(),
+                pipe.x.toFloat(), 
+                (pipe.topPipeHeight + pipe.gapHeight).toFloat(), 
+                (pipe.x + pipe.width).toFloat(), 
+                height.toFloat(), 
                 pipePaint
             )
         }
 
         // Draw Score
-        canvas.drawText("Score: ${engine.score}", (width / 2).toFloat(), 150f, scorePaint)
+        canvas.drawText("Score: ${engine.score}", 50f, 100f, scorePaint)
 
-        if (!engine.isGameOver) {
-            invalidate()
-        } else {
-            // Game Over message
-            val paint = Paint().apply {
+        if (engine.isGameOver) {
+            val overPaint = Paint().apply {
                 color = Color.RED
                 textSize = 100f
                 textAlign = Paint.Align.CENTER
             }
-            canvas.drawText("GAME OVER", (width / 2).toFloat(), (height / 2).toFloat(), paint)
-            canvas.drawText("Tap to Restart", (width / 2).toFloat(), (height / 2 + 120).toFloat(), paint.apply { textSize = 50f })
+            canvas.drawText("GAME OVER", (width / 2).toFloat(), (height / 2).toFloat(), overPaint)
+            canvas.drawText("Tap to Restart", (width / 2).toFloat(), (height / 2 + 120).toFloat(), scorePaint.apply { textAlign = Paint.Align.CENTER })
+        } else {
+            invalidate() // Continue animation
         }
     }
 
@@ -111,6 +114,8 @@ class GameView(context: Context, attrs: AttributeSet? = null) : View(context, at
                 engine.reset()
                 invalidate()
             } else {
+                // Manually flapping if the user wants to play, 
+                // but the engine currently has autoPlay enabled.
                 engine.bird.flap()
             }
         }
